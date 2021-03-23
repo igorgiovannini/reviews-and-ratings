@@ -1,14 +1,14 @@
-﻿namespace ReviewsRatings.Services
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using System.Threading.Tasks;
-    using Models;
-    using ReviewsRatings.DataSources;
-    using Vtex.Api.Context;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using ReviewsRatings.Models;
+using ReviewsRatings.DataSources;
+using Vtex.Api.Context;
 
+namespace ReviewsRatings.Services
+{
     /// <summary>
     /// Business logic 
     /// </summary>
@@ -17,33 +17,32 @@
         private readonly IProductReviewRepository _productReviewRepository;
         private readonly IAppSettingsRepository _appSettingsRepository;
         private readonly IIOServiceContext _context;
-        private const int maximumReturnedRecords = 999;
-        private const string DELIMITER = ":";
+        private const int MaximumReturnedRecords = 999;
+        private const string Delimiter = ":";
 
         public ProductReviewService(IProductReviewRepository productReviewRepository, IAppSettingsRepository appSettingsRepository, IIOServiceContext context)
         {
-            this._productReviewRepository = productReviewRepository ??
+            _productReviewRepository = productReviewRepository ??
                                             throw new ArgumentNullException(nameof(productReviewRepository));
-            this._appSettingsRepository = appSettingsRepository ??
+            _appSettingsRepository = appSettingsRepository ??
                                             throw new ArgumentNullException(nameof(appSettingsRepository));
-            this._context = context ??
+            _context = context ??
                             throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<bool> DeleteReview(int[] ids)
+        public async Task<bool> DeleteReviewAsync(int[] ids)
         {
             bool retval = true;
             IDictionary<int, string> lookup = await _productReviewRepository.LoadLookupAsync();
-            string productId = string.Empty;
             foreach (int id in ids)
             {
-                if (lookup.TryGetValue(id, out productId))
+                if (lookup.TryGetValue(id, out var productId))
                 {
-                    IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+                    IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
                     Review reviewToRemove = reviews.Where(r => r.Id == id).FirstOrDefault();
                     if (reviewToRemove != null && reviews.Remove(reviewToRemove))
                     {
-                        await this._productReviewRepository.SaveProductReviewsAsync(productId, reviews);
+                        await _productReviewRepository.SaveProductReviewsAsync(productId, reviews);
                     }
                 }
                 else
@@ -62,17 +61,17 @@
 
         public async Task<Review> EditReview(Review review)
         {
-            string productId = await this.LookupProductById(review.Id);
+            string productId = await LookupProductById(review.Id);
             if (!string.IsNullOrEmpty(productId))
             {
-                IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+                IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
                 // Remove the old version
-                Review reviewToRemove = reviews.Where(r => r.Id == review.Id).FirstOrDefault();
+                Review reviewToRemove = reviews.FirstOrDefault(r => r.Id == review.Id);
                 if (reviewToRemove != null && reviews.Remove(reviewToRemove))
                 {
                     // Add and save the new version
                     reviews.Add(review);
-                    await this._productReviewRepository.SaveProductReviewsAsync(productId, reviews);
+                    await _productReviewRepository.SaveProductReviewsAsync(productId, reviews);
                 }
             }
 
@@ -82,7 +81,7 @@
         public async Task<decimal> GetAverageRatingByProductId(string productId)
         {
             decimal averageRating = 0m;
-            IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+            IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
             if (reviews != null)
             {
                 AppSettings settings = await GetAppSettings();
@@ -102,30 +101,29 @@
             return decimal.Round(averageRating, 2, MidpointRounding.AwayFromZero);
         }
 
-        public async Task<Review> GetReview(int Id)
+        public async Task<Review?> GetReview(int id)
         {
-            Review review = null;
-            string productId = await this.LookupProductById(Id);
-            if (!string.IsNullOrEmpty(productId))
+            var productId = await LookupProductById(id);
+            if (string.IsNullOrEmpty(productId))
             {
-                IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
-                review = reviews.Where(r => r.Id == Id).FirstOrDefault();
+                return null;
             }
+            var reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
 
-            return review;
+            return reviews.FirstOrDefault(r => r.Id == id);
         }
 
         public async Task<IList<Review>> GetReviews()
         {
-            List<Review> reviews = new List<Review>();
-            IDictionary<int, string> lookup = await _productReviewRepository.LoadLookupAsync();
+            var reviews = new List<Review>();
+            var lookup = await _productReviewRepository.LoadLookupAsync();
             if (lookup != null)
             {
-                List<string> productIds = lookup.Values.Distinct().ToList();
+                var productIds = lookup.Values.Distinct().ToList();
                 foreach (string productId in productIds)
                 {
                     // Get all results - sort/limit later
-                    IList<Review> returnedReviewList = await this.GetReviewsByProductId(productId, 0, maximumReturnedRecords, string.Empty);
+                    var returnedReviewList = await GetReviewsByProductId(productId, 0, MaximumReturnedRecords, string.Empty);
                     reviews.AddRange(returnedReviewList);
                 }
             }
@@ -133,12 +131,12 @@
             return reviews;
         }
 
-        public async Task<IList<Review>> LimitReviews(IList<Review> reviews, int from, int to)
+        public IList<Review> LimitReviews(IList<Review> reviews, int from, int to)
         {
-            int take = maximumReturnedRecords;
+            int take = MaximumReturnedRecords;
             if (to > 0)
             {
-                take = Math.Min((to - from) + 1, maximumReturnedRecords);
+                take = Math.Min((to - from) + 1, MaximumReturnedRecords);
             }
 
             reviews = reviews.Skip(from - 1).Take(take).ToList();
@@ -146,75 +144,73 @@
             return reviews;
         }
 
-        public async Task<IList<Review>> FilterReviews(IList<Review> reviews, string searchTerm, string orderBy, string status)
+        public IList<Review> FilterReviews(IList<Review> reviews, string searchTerm, string orderBy, string status)
         {
-            if (reviews != null && reviews.Count > 0)
+            if (reviews == null || reviews.Count <= 0) return reviews;
+            if (!string.IsNullOrEmpty(searchTerm))
             {
-                if (!string.IsNullOrEmpty(searchTerm))
+                reviews = reviews.Where(x => new[]
                 {
-                    reviews = reviews.Where(x => new[]
-                    {
-                        x.ProductId ?? string.Empty,
-                        x.Sku ?? string.Empty,
-                        x.ShopperId ?? string.Empty,
-                        x.ReviewerName ?? string.Empty
-                    }.Any(s => s.Contains(searchTerm))).ToList();
-                }
+                    x.ProductId ?? string.Empty,
+                    x.Sku ?? string.Empty,
+                    x.ShopperId ?? string.Empty,
+                    x.ReviewerName ?? string.Empty
+                }.Any(s => s.Contains(searchTerm))).ToList();
+            }
 
-                if (!string.IsNullOrEmpty(orderBy))
+            if (!string.IsNullOrEmpty(orderBy))
+            {
+                string[] orderByArray = orderBy.Split(Delimiter);
+                PropertyInfo pi = typeof(Review).GetProperty(orderByArray[0]);
+                if (pi != null)
                 {
-                    string[] orderByArray = orderBy.Split(DELIMITER);
-                    PropertyInfo pi = typeof(Review).GetProperty(orderByArray[0]);
-                    if (pi != null)
+                    bool descendingOrder = true;
+                    if (orderByArray.Length > 1)
                     {
-                        bool descendingOrder = true;
-                        if (orderByArray.Length > 1)
+                        if (orderByArray[1].ToLower().Contains("asc"))
                         {
-                            if (orderByArray[1].ToLower().Contains("asc"))
-                            {
-                                descendingOrder = false;
-                            }
+                            descendingOrder = false;
                         }
+                    }
 
-                        if (descendingOrder)
+                    if (descendingOrder)
+                    {
+                        if (pi.Name.Equals("ReviewDateTime"))
                         {
-                            if (pi.Name.Equals("ReviewDateTime"))
+                            reviews = reviews.OrderByDescending(x =>
                             {
-                                reviews = reviews.OrderByDescending(x =>
-                                {
-                                    DateTime dt;
-                                    DateTime.TryParse(x.ReviewDateTime, out dt);
-                                    return dt;
-                                }).ToList();
-                            }
-                            else
-                            {
-                                reviews = reviews.OrderByDescending(x => pi.GetValue(x, null)).ToList();
-                            }
+                                DateTime dt;
+                                DateTime.TryParse(x.ReviewDateTime, out dt);
+                                return dt;
+                            }).ToList();
                         }
                         else
                         {
-                            if (pi.Name.Equals("ReviewDateTime"))
+                            reviews = reviews.OrderByDescending(x => pi.GetValue(x, null)).ToList();
+                        }
+                    }
+                    else
+                    {
+                        if (pi.Name.Equals("ReviewDateTime"))
+                        {
+                            reviews = reviews.OrderBy(x =>
                             {
-                                reviews = reviews.OrderBy(x =>
-                                {
-                                    DateTime dt;
-                                    DateTime.TryParse(x.ReviewDateTime, out dt);
-                                    return dt;
-                                }).ToList();
-                            }
-                            else
-                            {
-                                reviews = reviews.OrderBy(x => pi.GetValue(x, null)).ToList();
-                            }
+                                DateTime dt;
+                                DateTime.TryParse(x.ReviewDateTime, out dt);
+                                return dt;
+                            }).ToList();
+                        }
+                        else
+                        {
+                            reviews = reviews.OrderBy(x => pi.GetValue(x, null)).ToList();
                         }
                     }
                 }
+            }
 
-                if (!string.IsNullOrEmpty(status))
-                {
-                    reviews = reviews.Where(x => x.Approved.Equals(Boolean.Parse(status))).ToList();
-                }
+            if (!string.IsNullOrEmpty(status))
+            {
+                reviews = reviews.Where(x => x.Approved.Equals(Boolean.Parse(status))).ToList();
             }
 
             return reviews;
@@ -223,31 +219,31 @@
         /// query Reviews($searchTerm: String, $from: Int, $to: Int, $orderBy: String, $status: Boolean)
         public async Task<IList<Review>> GetReviews(string searchTerm, int from, int to, string orderBy, string status)
         {
-            IList<Review> reviews = await GetReviews();
-            reviews = await FilterReviews(reviews, searchTerm, orderBy, status);
-            reviews = await LimitReviews(reviews, from, to);
+            var reviews = await GetReviews();
+            reviews = FilterReviews(reviews, searchTerm, orderBy, status);
+            reviews = LimitReviews(reviews, from, to);
             return reviews;
         }
 
         public async Task<IList<Review>> GetReviewsByProductId(string productId)
         {
-            return await this.GetReviewsByProductId(productId, 0, maximumReturnedRecords, string.Empty);
+            return await GetReviewsByProductId(productId, 0, MaximumReturnedRecords, string.Empty);
         }
 
         public async Task<IList<Review>> GetReviewsByProductId(string productId, int offset, int limit, string orderBy)
         {
             if(limit == 0)
             {
-                limit = maximumReturnedRecords;
+                limit = MaximumReturnedRecords;
             }
 
-            limit = Math.Min(limit, maximumReturnedRecords);
-            IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+            limit = Math.Min(limit, MaximumReturnedRecords);
+            IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
             if (reviews != null && reviews.Count > 0)
             {
                 if (!string.IsNullOrEmpty(orderBy))
                 {
-                    string[] orderByArray = orderBy.Split(DELIMITER);
+                    string[] orderByArray = orderBy.Split(Delimiter);
                     PropertyInfo pi = typeof(Review).GetProperty(orderByArray[0]);
                     if (pi != null)
                     {
@@ -309,16 +305,16 @@
 
                 string productId = review.ProductId;
 
-                IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+                IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
                 if (reviews == null)
                 {
                     reviews = new List<Review>();
                 }
 
                 reviews.Add(review);
-                await this._productReviewRepository.SaveProductReviewsAsync(productId, reviews);
+                await _productReviewRepository.SaveProductReviewsAsync(productId, reviews);
                 lookup.Add(review.Id, review.ProductId);
-                await this._productReviewRepository.SaveLookupAsync(lookup);
+                await _productReviewRepository.SaveLookupAsync(lookup);
             }
 
             return review;
@@ -326,7 +322,7 @@
 
         public async Task<IList<Review>> GetReviewsByShopperId(string shopperId)
         {
-            IList<Review> reviews = await this.GetReviews();
+            IList<Review> reviews = await GetReviews();
             reviews = reviews.Where(r => r.ShopperId == shopperId).ToList();
 
             return reviews;
@@ -340,24 +336,23 @@
                 List<string> productIds = lookup.Values.Distinct().ToList();
                 foreach (string productId in productIds)
                 {
-                    await this._productReviewRepository.SaveProductReviewsAsync(productId, null);
+                    await _productReviewRepository.SaveProductReviewsAsync(productId, null);
                 }
             }
 
             await _productReviewRepository.SaveLookupAsync(null);
         }
 
-        private async Task<string> LookupProductById(int Id)
+        private async Task<string> LookupProductById(int id)
         {
-            IDictionary<int, string> lookup = await _productReviewRepository.LoadLookupAsync();
-            string productId = string.Empty;
-            lookup.TryGetValue(Id, out productId);
+            var lookup = await _productReviewRepository.LoadLookupAsync();
+            lookup.TryGetValue(id, out var productId);
             return productId;
         }
 
         private async Task<int> GetNewId()
         {
-            IDictionary<int, string> lookup = await _productReviewRepository.LoadLookupAsync();
+            var lookup = await _productReviewRepository.LoadLookupAsync();
             int maxKeyValue = 0;
             if (lookup != null)
             {
@@ -370,19 +365,19 @@
         public async Task<bool> ModerateReview(int[] ids, bool approved)
         {
             bool retval = true;
-            IDictionary<int, string> lookup = await _productReviewRepository.LoadLookupAsync();
-            string productId = string.Empty;
+            var lookup = await _productReviewRepository.LoadLookupAsync();
+            var productId = string.Empty;
             foreach (int id in ids)
             {
                 lookup.TryGetValue(id, out productId);
                 if (!string.IsNullOrEmpty(productId))
                 {
-                    IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+                    IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
                     Review reviewToModerate = reviews.Where(r => r.Id == id).FirstOrDefault();
                     if (reviewToModerate != null)
                     {
                         reviewToModerate.Approved = approved;
-                        await this._productReviewRepository.SaveProductReviewsAsync(productId, reviews);
+                        await _productReviewRepository.SaveProductReviewsAsync(productId, reviews);
                     }
                 }
                 else
@@ -399,7 +394,7 @@
             bool retval = false;
             try
             {
-                IList<Review> reviews = await this._productReviewRepository.GetProductReviewsAsync(productId);
+                IList<Review> reviews = await _productReviewRepository.GetProductReviewsAsync(productId);
                 if (reviews != null && reviews.Count > 0)
                 {
                     reviews = reviews.Where(r => r.ShopperId == shopperId).ToList();
@@ -419,17 +414,17 @@
 
         public async Task<AppSettings> GetAppSettings()
         {
-            return await this._appSettingsRepository.GetAppSettingAsync();
+            return await _appSettingsRepository.GetAppSettingAsync();
         }
 
         public async Task<ValidatedUser> ValidateUserToken(string token)
         {
-            return await this._productReviewRepository.ValidateUserToken(token);
+            return await _productReviewRepository.ValidateUserToken(token);
         }
 
         public async Task<bool> ValidateKeyAndToken(string key, string token, string baseUrl)
         {
-            return await this._productReviewRepository.ValidateKeyAndToken(key, token, baseUrl);
+            return await _productReviewRepository.ValidateKeyAndToken(key, token, baseUrl);
         }
 
         public async Task<bool> ShopperHasPurchasedProduct(string shopperId, string productId)
@@ -437,11 +432,11 @@
             bool hasPurchased = false;
             try
             {
-                VtexOrderList vtexOrderList = await this._productReviewRepository.ListOrders($"q={shopperId}");
+                VtexOrderList vtexOrderList = await _productReviewRepository.ListOrders($"q={shopperId}");
                 var orderIds = vtexOrderList.List.Select(o => o.OrderId);
                 foreach (string orderId in orderIds)
                 {
-                    VtexOrder vtexOrder = await this._productReviewRepository.GetOrderInformation(orderId);
+                    VtexOrder vtexOrder = await _productReviewRepository.GetOrderInformation(orderId);
                     var productIds = vtexOrder.Items.Select(i => i.ProductId);
                     hasPurchased = productIds.Contains(productId);
                     if (hasPurchased)

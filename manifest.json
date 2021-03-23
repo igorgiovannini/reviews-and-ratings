@@ -1,6 +1,6 @@
 {
-  "name": "reviews-and-ratings",
-  "vendor": "vtex",
+  "name": "reviews-and-ratings-demo",
+  "vendor": "igorgiovannini",
   "version": "2.9.1",
   "title": "Reviews and Ratings",
   "description": "An app for saving and retrieving product reviews and ratings.",

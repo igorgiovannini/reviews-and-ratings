@@ -18,7 +18,6 @@ namespace ReviewsRatings.Models
     ///  Approved : Boolean
     ///  Location : String
     /// </summary>
-    //[JsonConverter(typeof(ReviewJsonConverter))]
     public class Review
     {
         /// <summary>

@@ -4,7 +4,6 @@ using ReviewsRatings.GraphQL.Types;
 using ReviewsRatings.Models;
 using ReviewsRatings.Services;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -30,7 +29,7 @@ namespace ReviewsRatings.GraphQL
             );
 
             /// query Reviews($searchTerm: String, $from: Int, $to: Int, $orderBy: String, $status: Boolean)
-            FieldAsync<SearchResponseType>(
+            Field<SearchResponseType>(
                 "reviews",
                 arguments: new QueryArguments(
                     new QueryArgument<StringGraphType> { Name = "searchTerm", Description = "Search term" },
@@ -39,7 +38,7 @@ namespace ReviewsRatings.GraphQL
                     new QueryArgument<StringGraphType> { Name = "orderBy", Description = "Order by" },
                     new QueryArgument<StringGraphType> { Name = "status", Description = "Status" }
                 ),
-                resolve: async context =>
+                resolve: context =>
                 {
                     string searchTerm = context.GetArgument<string>("searchTerm");
                     int from = context.GetArgument<int>("from");
@@ -47,9 +46,9 @@ namespace ReviewsRatings.GraphQL
                     string orderBy = context.GetArgument<string>("orderBy");
                     string status = context.GetArgument<string>("status");
                     var searchResult = productReviewService.GetReviews();
-                    IList<Review> searchData = await productReviewService.FilterReviews(searchResult.Result, searchTerm, orderBy, status);
+                    IList<Review> searchData = productReviewService.FilterReviews(searchResult.Result, searchTerm, orderBy, status);
                     int totalCount = searchData.Count;
-                    searchData = await productReviewService.LimitReviews(searchData, from, to);
+                    searchData = productReviewService.LimitReviews(searchData, from, to);
                     Console.WriteLine($"totalCount = {totalCount} : Filtered to {searchData.Count}");
                     SearchResponse searchResponse = new SearchResponse
                     {
@@ -81,9 +80,9 @@ namespace ReviewsRatings.GraphQL
                     string status = context.GetArgument<string>("status");
 
                     var searchResult = await productReviewService.GetReviewsByProductId(productId);
-                    IList<Review> searchData = await productReviewService.FilterReviews(searchResult, searchTerm, orderBy, status);
+                    IList<Review> searchData = productReviewService.FilterReviews(searchResult, searchTerm, orderBy, status);
                     int totalCount = searchData.Count;
-                    searchData = await productReviewService.LimitReviews(searchData, from, to);
+                    searchData = productReviewService.LimitReviews(searchData, from, to);
                     Console.WriteLine($"totalCount = {totalCount} : Filtered to {searchData.Count}");
                     SearchResponse searchResponse = new SearchResponse
                     {
@@ -130,7 +129,7 @@ namespace ReviewsRatings.GraphQL
                 }
             );
 
-            FieldAsync<SearchResponseType>(
+            Field<SearchResponseType>(
                 "reviewsByShopperId",
                 arguments: new QueryArguments(
                     new QueryArgument<NonNullGraphType<StringGraphType>> { Name = "shopperId", Description = "Shopper Id" },
@@ -140,7 +139,7 @@ namespace ReviewsRatings.GraphQL
                     new QueryArgument<StringGraphType> { Name = "orderBy", Description = "Order by" },
                     new QueryArgument<StringGraphType> { Name = "status", Description = "Status" }
                 ),
-                resolve: async context =>
+                resolve: context =>
                 {
                     string shopperId = context.GetArgument<string>("shopperId");
                     string searchTerm = context.GetArgument<string>("searchTerm");
@@ -150,9 +149,9 @@ namespace ReviewsRatings.GraphQL
                     string status = context.GetArgument<string>("status");
 
                     var searchResult = productReviewService.GetReviewsByShopperId(shopperId);
-                    IList<Review> searchData = await productReviewService.FilterReviews(searchResult.Result, searchTerm, orderBy, status);
+                    IList<Review> searchData = productReviewService.FilterReviews(searchResult.Result, searchTerm, orderBy, status);
                     int totalCount = searchData.Count;
-                    searchData = await productReviewService.LimitReviews(searchData, from, to);
+                    searchData = productReviewService.LimitReviews(searchData, from, to);
                     Console.WriteLine($"totalCount = {totalCount} : Filtered to {searchData.Count}");
                     SearchResponse searchResponse = new SearchResponse
                     {

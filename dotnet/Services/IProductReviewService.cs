@@ -10,7 +10,7 @@
 
         Task<IList<Review>> GetReviewsByProductId(string productId);
 
-        Task<Review> GetReview(int Id);
+        Task<Review?> GetReview(int id);
 
         Task<IList<Review>> GetReviews();
 
@@ -22,7 +22,7 @@
 
         Task<Review> EditReview(Review review);
 
-        Task<bool> DeleteReview(int[] ids);
+        Task<bool> DeleteReviewAsync(int[] ids);
 
         Task<IList<Review>> GetReviewsByShopperId(string shopperId);
 
@@ -34,9 +34,9 @@
 
         Task<AppSettings> GetAppSettings();
 
-        Task<IList<Review>> FilterReviews(IList<Review> reviews, string searchTerm, string orderBy, string status);
+        IList<Review> FilterReviews(IList<Review> reviews, string searchTerm, string orderBy, string status);
 
-        Task<IList<Review>> LimitReviews(IList<Review> reviews, int from, int to);
+        IList<Review> LimitReviews(IList<Review> reviews, int from, int to);
 
         Task<ValidatedUser> ValidateUserToken(string token);
 
