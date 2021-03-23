@@ -1,7 +1,7 @@
 {
   "name": "reviews-and-ratings-demo",
   "vendor": "igorgiovannini",
-  "version": "2.9.1",
+  "version": "2.10.0-beta.0",
   "title": "Reviews and Ratings",
   "description": "An app for saving and retrieving product reviews and ratings.",
   "builders": {
