@@ -11,11 +11,11 @@
   ],
   "routes": {
     "reviewApiAction": {
-      "path": "/reviews-and-ratings/api/:requestedAction",
+      "path": "/reviews-and-ratings-demo/api/:requestedAction",
       "public": true
     },
     "reviewApiActionId": {
-      "path": "/reviews-and-ratings/api/:requestedAction/:id",
+      "path": "/reviews-and-ratings-demo/api/:requestedAction/:id",
       "public": true
     }
   },

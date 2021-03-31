@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ReviewsRatings.Controllers
 {
-    [Route("reviews-and-ratings/api/")]
+    [Route("reviews-and-ratings-demo/api/")]
     public class RoutesController : ControllerBase
     {
         private readonly IProductReviewService _productReviewsService;
