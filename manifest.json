@@ -1,7 +1,7 @@
 {
   "name": "reviews-and-ratings-demo",
   "vendor": "postch",
-  "version": "0.0.2-beta.0",
+  "version": "0.0.3-beta.0",
   "title": "Reviews and Ratings",
   "description": "An app for saving and retrieving product reviews and ratings.",
   "builders": {
